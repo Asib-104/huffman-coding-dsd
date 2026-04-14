@@ -24,9 +24,13 @@ create_clock -add -name sys_clk_pin -period 10.00 -waveform {0 5} [get_ports clk
 set_property PACKAGE_PIN U18 [get_ports reset]
 set_property IOSTANDARD LVCMOS33 [get_ports reset]
 
-## BTNL (Left) - Valid / Input Strobe (press once per symbol)
+## BTNL (Left) - Valid: press ONCE per symbol to register it
 set_property PACKAGE_PIN W19 [get_ports valid]
 set_property IOSTANDARD LVCMOS33 [get_ports valid]
+
+## BTNR (Right) - Encode: press ONCE after all symbols entered to start encoding
+set_property PACKAGE_PIN T17 [get_ports encode]
+set_property IOSTANDARD LVCMOS33 [get_ports encode]
 
 ## -------------------------------------------------------
 ## Switches - Symbol Input (SW7:SW0 = symbol[7:0])

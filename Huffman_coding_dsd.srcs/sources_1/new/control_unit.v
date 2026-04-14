@@ -2,6 +2,7 @@ module control_unit(
     input clk,
     input reset,
     input valid_in,
+    input encode_start,      // Pulse HIGH to begin encoding (from BTNR)
     input [7:0] symbol,         // 8-bit ASCII Input
     input [7:0] f0, f1, f2, f3, // 8-bit Frequencies
     input [7:0] mem_dout,       // 8-bit Memory Read
@@ -83,9 +84,10 @@ module control_unit(
                 count_enable = valid_in;
                 if (valid_in) begin
                     mem_we = 1; mem_addr = input_write_ptr; mem_din = symbol;
-                end else begin
-                    next_state = MEM_INIT_F0;
+                end else if (encode_start) begin
+                    next_state = MEM_INIT_F0;  // BTNR pressed = start encoding
                 end
+                // else: stay in COUNT, waiting for more symbols or encode press
             end
             
             // Populate exact frequencies to Mem indexes 0-3
