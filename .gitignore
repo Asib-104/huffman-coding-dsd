@@ -1,0 +1,34 @@
+# Vivado generated directories
+*.cache/
+*.hw/
+*.ip_user_files/
+*.sim/
+*.runs/
+*.sdk/
+*.hbs/
+*.xsa
+
+# Vivado temporary/working directories
+.Xil/
+NA/
+fuseIP/
+
+# Vivado log and journal files
+*.jou
+*.log
+vivado_*.backup.jou
+vivado_*.backup.log
+
+# Generated output files (bitstreams, reports, checkpoints)
+*.bit
+*.ltx
+*.rpt
+*.pb
+*.wdb
+*.str
+*.dcp
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
