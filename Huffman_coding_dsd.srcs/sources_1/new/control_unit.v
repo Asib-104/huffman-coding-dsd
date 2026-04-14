@@ -60,7 +60,7 @@ module control_unit(
     reg [2:0] sort_i, sort_j;
     reg [7:0] reg_f_a, reg_f_b;
     reg [7:0] reg_c_a, reg_c_b;
-    reg [7:0] rank_sym_1, rank_sym_2, rank_sym_3, rank_sym_4;
+    reg [7:0] rank_sym_1, rank_sym_2, rank_sym_3;
     reg [7:0] fetched_symbol;
 
     always @(*) begin
@@ -150,16 +150,25 @@ module control_unit(
                 if (next_sym) next_state = ENCODE_READ;
             end
             DONE: begin done = 1; next_state = IDLE; end
+            default: ; // All other state encodings: hold state (should never occur)
         endcase
     end
 
     always @(posedge clk or posedge reset) begin
         if (reset) begin
-            state <= IDLE;
-            input_write_ptr <= 7'd8; // Begin inserting at Index 8 (leaving 0-7 exclusively for Sort arrays)
-            input_read_ptr <= 7'd8;
-            sort_i <= 0;
-            sort_j <= 0;
+            state           <= IDLE;
+            input_write_ptr <= 7'd8;
+            input_read_ptr  <= 7'd8;
+            sort_i          <= 0;
+            sort_j          <= 0;
+            reg_f_a         <= 8'd0;
+            reg_f_b         <= 8'd0;
+            reg_c_a         <= 8'd0;
+            reg_c_b         <= 8'd0;
+            rank_sym_1      <= 8'd0;
+            rank_sym_2      <= 8'd0;
+            rank_sym_3      <= 8'd0;
+            fetched_symbol  <= 8'd0;
         end else begin
             state <= next_state;
 
@@ -180,10 +189,10 @@ module control_unit(
             end
 
             // Storing the results into comb table natively parsing 8-bits!
-            if (state == FETCH_C1) rank_sym_1 <= mem_dout; 
+            if (state == FETCH_C1) rank_sym_1 <= mem_dout;
             if (state == FETCH_C2) rank_sym_2 <= mem_dout;
             if (state == FETCH_C3) rank_sym_3 <= mem_dout;
-            if (state == FETCH_C4) rank_sym_4 <= mem_dout;
+            // rank_sym_4 removed — only 3 ranks used in current_rank assign
 
             if (state == ENCODE_READ) fetched_symbol <= mem_dout;
             if (state == LOAD) input_read_ptr <= input_read_ptr + 1;

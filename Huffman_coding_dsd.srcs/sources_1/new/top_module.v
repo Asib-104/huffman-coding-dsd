@@ -166,7 +166,6 @@ module top_module(
         .load_pulse(load_enable),
         .huff_code(huff_code),
         .huff_len(huff_len),
-        .done(done),
         .seg(seg),
         .an(an)
     );
