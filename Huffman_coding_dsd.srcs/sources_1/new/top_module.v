@@ -19,9 +19,10 @@
 // Pin assignments:
 //   clk    → W5   (100 MHz oscillator)
 //   reset  → U18  (BTNC – Center)
-//   valid  → W19  (BTNL – Left,  press once per symbol)
-//   encode → T17  (BTNR – Right, press to start encoding)
-//   symbol → SW7:SW0
+//   valid      -> W19  (BTNL – Left,  press once per symbol)
+//   encode     -> T17  (BTNR – Right, press to start encoding)
+//   next_sym   -> T18  (BTNU – Up,    press to see next symbol's code)
+//   symbol     -> SW7:SW0
 //   seg    → W7,W6,U8,V8,U5,V5,U7  (7-seg cathodes)
 //   an     → U2,U4,V4,W4           (7-seg anodes)
 //   done   → L1 (LED15)
@@ -32,6 +33,7 @@ module top_module(
     input        reset,
     input        valid,        // BTNL — press once per symbol to register it
     input        encode,       // BTNR — press once to start encoding
+    input        next_sym_btn, // BTNU — press to advance to next symbol during encoding
     input  [7:0] symbol,       // SW7:SW0 — 8-bit ASCII of current symbol
     output       done,
     output [6:0] seg,          // 7-segment cathodes {CG,CF,CE,CD,CC,CB,CA} active LOW
@@ -69,6 +71,17 @@ module top_module(
     wire encode_pulse = es2 & ~es3;
 
     // -------------------------------------------------------
+    // BTNU: 3-stage synchronizer + rising-edge detector
+    // Press during SHOW_CODE pause to advance to next symbol
+    // -------------------------------------------------------
+    reg ns1, ns2, ns3;
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin ns1 <= 0; ns2 <= 0; ns3 <= 0; end
+        else       begin ns1 <= next_sym_btn; ns2 <= ns1; ns3 <= ns2; end
+    end
+    wire next_sym_pulse = ns2 & ~ns3;
+
+    // -------------------------------------------------------
     // Core modules
     // -------------------------------------------------------
     control_unit cu (
@@ -76,6 +89,7 @@ module top_module(
         .reset(reset),
         .valid_in(valid_pulse),
         .encode_start(encode_pulse),
+        .next_sym(next_sym_pulse),
         .symbol(symbol),
         .f0(f0), .f1(f1), .f2(f2), .f3(f3),
         .mem_dout(mem_dout),

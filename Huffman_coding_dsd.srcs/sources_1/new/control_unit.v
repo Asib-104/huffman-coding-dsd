@@ -3,6 +3,7 @@ module control_unit(
     input reset,
     input valid_in,
     input encode_start,      // Pulse HIGH to begin encoding (from BTNR)
+    input next_sym,          // Pulse HIGH to advance to next symbol (from BTNU)
     input [7:0] symbol,         // 8-bit ASCII Input
     input [7:0] f0, f1, f2, f3, // 8-bit Frequencies
     input [7:0] mem_dout,       // 8-bit Memory Read
@@ -50,7 +51,8 @@ module control_unit(
     localparam ASSIGN         = 5'd26;
     localparam LOAD           = 5'd27;
     localparam SHIFT          = 5'd28;
-    localparam DONE           = 5'd29;
+    localparam SHOW_CODE      = 5'd29;  // Pause after each symbol: wait for BTNU
+    localparam DONE           = 5'd30;
 
     reg [4:0] state, next_state;
     reg [6:0] input_write_ptr;
@@ -140,8 +142,12 @@ module control_unit(
             ASSIGN: begin next_state = LOAD; end
             LOAD: begin load_enable = 1; next_state = SHIFT; end
             SHIFT: begin
-                if (zero_flag) next_state = ENCODE_READ;
+                if (zero_flag) next_state = SHOW_CODE; // Pause: show code, wait for BTNU
                 else shift_enable = 1;
+            end
+            SHOW_CODE: begin
+                // Display holds steady here. BTNU advances to next symbol.
+                if (next_sym) next_state = ENCODE_READ;
             end
             DONE: begin done = 1; next_state = IDLE; end
         endcase

@@ -32,6 +32,10 @@ set_property IOSTANDARD LVCMOS33 [get_ports valid]
 set_property PACKAGE_PIN T17 [get_ports encode]
 set_property IOSTANDARD LVCMOS33 [get_ports encode]
 
+## BTNU (Up) — Next: press during encoding to step to next symbol's code
+set_property PACKAGE_PIN T18 [get_ports next_sym_btn]
+set_property IOSTANDARD LVCMOS33 [get_ports next_sym_btn]
+
 ## -------------------------------------------------------
 ## Switches — Symbol input SW7:SW0 = symbol[7:0]
 ## -------------------------------------------------------
