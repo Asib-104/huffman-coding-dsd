@@ -36,6 +36,7 @@ set src_files [list \
     [file normalize "$src_dir/control_unit.v"]     \
     [file normalize "$src_dir/frequency_counter.v"]\
     [file normalize "$src_dir/memory_unit.v"]      \
+    [file normalize "$src_dir/seg7_display.v"]     \
     [file normalize "$src_dir/shift_register.v"]   \
     [file normalize "$src_dir/top_module.v"]       \
 ]

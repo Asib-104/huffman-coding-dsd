@@ -1,36 +1,41 @@
 // ============================================================
-// Huffman Coding Hardware - Top Module
-// Target: Basys3 (Artix-7 XC7A35T-1CPG236)
+// Huffman Coding Hardware — Top Module
+// Target : Basys3 (Artix-7 XC7A35T-1CPG236)
 //
 // HOW TO USE:
-//   1. Press BTNC to reset the board
-//   2. Set SW7:SW0 to ASCII value of first symbol
-//      A=01000001, B=01000010, C=01000011, D=01000100
-//   3. Press BTNL once to register that symbol
-//   4. Change switches to next symbol, press BTNL again
-//   5. Repeat steps 3-4 for every symbol in your input
-//   6. When all symbols are entered, press BTNR to start encoding
-//   7. Watch LED0 (serial_out) blink the Huffman bits, MSB first
-//   8. LED15 (done) goes HIGH when encoding is complete
+//   1. Press BTNC  → reset the board
+//   2. Set SW7:SW0 → ASCII value of symbol to enter
+//         A = 01000001  B = 01000010  C = 01000011  D = 01000100
+//   3. Press BTNL  → registers that symbol (AN3 shows symbol letter)
+//   4. Repeat steps 2-3 for each symbol in your input string
+//   5. Press BTNR  → starts Huffman encoding
+//   6. 7-segment shows the Huffman code of the last encoded symbol:
+//         AN3 = symbol  (A / b / C / d)
+//         AN2 = code MSB  (1 / 0 / -)
+//         AN1 = code MID  (1 / 0 / -)
+//         AN0 = code LSB  (1 / 0 / -)
+//   7. LED15 goes HIGH when encoding is complete
 //
-// I/O Mapping:
-//   clk        -> W5   (100MHz onboard oscillator)
-//   reset      -> U18  (BTNC - Center)
-//   valid      -> W19  (BTNL - Left,  press once per symbol)
-//   encode     -> T17  (BTNR - Right, press to start encoding)
-//   symbol     -> SW7:SW0 (set to 8-bit ASCII of symbol)
-//   serial_out -> U16  (LED0)
-//   done       -> L1   (LED15)
+// Pin assignments:
+//   clk    → W5   (100 MHz oscillator)
+//   reset  → U18  (BTNC – Center)
+//   valid  → W19  (BTNL – Left,  press once per symbol)
+//   encode → T17  (BTNR – Right, press to start encoding)
+//   symbol → SW7:SW0
+//   seg    → W7,W6,U8,V8,U5,V5,U7  (7-seg cathodes)
+//   an     → U2,U4,V4,W4           (7-seg anodes)
+//   done   → L1 (LED15)
 // ============================================================
 
 module top_module(
-    input clk,
-    input reset,
-    input valid,          // BTNL: press once per symbol to register it
-    input encode,         // BTNR: press once when done entering symbols
-    input [7:0] symbol,   // SW7:SW0 = 8-bit ASCII of current symbol
-    output serial_out,
-    output done
+    input        clk,
+    input        reset,
+    input        valid,        // BTNL — press once per symbol to register it
+    input        encode,       // BTNR — press once to start encoding
+    input  [7:0] symbol,       // SW7:SW0 — 8-bit ASCII of current symbol
+    output       done,
+    output [6:0] seg,          // 7-segment cathodes {CG,CF,CE,CD,CC,CB,CA} active LOW
+    output [3:0] an            // 7-segment anodes, active LOW
 );
 
     wire count_enable, mem_we, load_enable, shift_enable;
@@ -40,31 +45,31 @@ module top_module(
     wire [7:0] f0, f1, f2, f3;
     wire [2:0] huff_code, current_rank;
     wire [1:0] huff_len;
+    wire       serial_out;     // internal only — fed to seg7_display indirectly
 
     // -------------------------------------------------------
     // BTNL: 3-stage synchronizer + rising-edge detector
-    // One clock-cycle pulse per button press (registers 1 symbol)
+    // Converts button press → exactly 1 clock-cycle pulse
     // -------------------------------------------------------
-    reg valid_s1, valid_s2, valid_s3;
+    reg vs1, vs2, vs3;
     always @(posedge clk or posedge reset) begin
-        if (reset) begin valid_s1 <= 0; valid_s2 <= 0; valid_s3 <= 0; end
-        else       begin valid_s1 <= valid; valid_s2 <= valid_s1; valid_s3 <= valid_s2; end
+        if (reset) begin vs1 <= 0; vs2 <= 0; vs3 <= 0; end
+        else       begin vs1 <= valid;  vs2 <= vs1; vs3 <= vs2; end
     end
-    wire valid_pulse = valid_s2 & ~valid_s3;   // rising edge only
+    wire valid_pulse  = vs2 & ~vs3;
 
     // -------------------------------------------------------
     // BTNR: 3-stage synchronizer + rising-edge detector
-    // One clock-cycle pulse when user presses "start encoding"
     // -------------------------------------------------------
-    reg enc_s1, enc_s2, enc_s3;
+    reg es1, es2, es3;
     always @(posedge clk or posedge reset) begin
-        if (reset) begin enc_s1 <= 0; enc_s2 <= 0; enc_s3 <= 0; end
-        else       begin enc_s1 <= encode; enc_s2 <= enc_s1; enc_s3 <= enc_s2; end
+        if (reset) begin es1 <= 0; es2 <= 0; es3 <= 0; end
+        else       begin es1 <= encode; es2 <= es1; es3 <= es2; end
     end
-    wire encode_pulse = enc_s2 & ~enc_s3;      // rising edge only
+    wire encode_pulse = es2 & ~es3;
 
     // -------------------------------------------------------
-    // Module instantiations
+    // Core modules
     // -------------------------------------------------------
     control_unit cu (
         .clk(clk),
@@ -132,6 +137,24 @@ module top_module(
         .data_in(huff_code),
         .length(huff_len),
         .serial_out(serial_out)
+    );
+
+    // -------------------------------------------------------
+    // 7-Segment Display Controller
+    // AN3 = last registered symbol letter
+    // AN2-AN0 = Huffman code bits, latched at LOAD state
+    // -------------------------------------------------------
+    seg7_display disp (
+        .clk(clk),
+        .reset(reset),
+        .valid_pulse(valid_pulse),
+        .symbol(symbol),
+        .load_pulse(load_enable),
+        .huff_code(huff_code),
+        .huff_len(huff_len),
+        .done(done),
+        .seg(seg),
+        .an(an)
     );
 
 endmodule
